@@ -14,29 +14,29 @@ class Config {
   public static final String OUTPUT_WRAPPER_MARKER = "%output%";
 
 
-  private String rootPath;
-  
-  private String charset;
+  private final String rootPath;
 
-  private String outputWrapper;
+  private final String charset;
 
-  private List<Module> modules;
+  private final String outputWrapper;
 
-  private List<Replace> replaces;
+  private final List<Module> modules;
 
-  private String preprocessCommand;
+  private final List<Replace> replaces;
 
-  private boolean quiet;
+  private final String preprocessCommand;
 
-  
+  private final boolean quiet;
+
+
   Config(
-      String rootPath,
-      String charset,
-      String outputWrapper,
-      List<Module> modules,
-      List<Replace> replaces,
-      String preprocessCommand,
-      boolean quiet){
+      final String rootPath,
+      final String charset,
+      final String outputWrapper,
+      final List<Module> modules,
+      final List<Replace> replaces,
+      final String preprocessCommand,
+      final boolean quiet){
 
     this.rootPath = rootPath;
     this.charset = charset;
@@ -79,12 +79,12 @@ class Config {
   final static class Module {
 
     final String name;
-    final List<String> inputs;
+    final String input;
     final String outputPath;
 
-    Module(String name, List<String> inputs, String outputPath) {
+    Module(final String name, final String input, final String outputPath) {
       this.name = name;
-      this.inputs = inputs;
+      this.input = input;
       this.outputPath = outputPath;
     }
 
@@ -96,7 +96,7 @@ class Config {
     final String search;
     final String replacement;
 
-    Replace(String search, String replacement) {
+    Replace(final String search, final String replacement) {
       this.search = search;
       this.replacement = replacement;
     }

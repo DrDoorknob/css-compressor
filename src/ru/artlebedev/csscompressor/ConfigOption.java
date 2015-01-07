@@ -17,17 +17,26 @@ public enum ConfigOption {
       "root", "string",
       new Updater(){
         @Override
-        public void update(String rootPath, ConfigBuilder builder) {
+        public void update(final String rootPath, final ConfigBuilder builder) {
           builder.setRootPath(rootPath);
         }
       },
       "."), // relative to location of config json file
 
+  INPUT_PATH(
+		  "input-path", "string",
+		  new Updater() {
+			  @Override
+			public void update(final String value, final ConfigBuilder builder) {
+				  builder.setInputPath(value);
+			  }
+		  }),
+
   OUTPUT_PATH(
       "output-path", "string",
       new Updater(){
         @Override
-        public void update(String outputPath, ConfigBuilder builder){
+        public void update(final String outputPath, final ConfigBuilder builder){
           builder.setOutputPath(outputPath);
         }
       }),
@@ -36,7 +45,7 @@ public enum ConfigOption {
       "output-wrapper", "string or array",
       new Updater(){
         @Override
-        public void update(String outputWrapper, ConfigBuilder builder){
+        public void update(final String outputWrapper, final ConfigBuilder builder){
           builder.setOutputWrapper(outputWrapper);
         }
 
@@ -46,8 +55,8 @@ public enum ConfigOption {
          */
         @Override
         public void update(
-            JsonArray outputWrapperParts, ConfigBuilder builder) {
-          
+            final JsonArray outputWrapperParts, final ConfigBuilder builder) {
+
           StringBuilder outputWrapper = new StringBuilder();
           for (JsonElement item : outputWrapperParts) {
             String part = Utils.jsonElementToStringOrNull(item);
@@ -63,12 +72,12 @@ public enum ConfigOption {
           update(outputWrapper.toString(), builder);
         }
       }),
-  
+
   MODULES(
       "modules", "object",
       new Updater(){
         @Override
-        public void update(JsonObject modules, ConfigBuilder builder){
+        public void update(final JsonObject modules, final ConfigBuilder builder){
           builder.setModulesInfo(modules);
         }
       }),
@@ -77,7 +86,7 @@ public enum ConfigOption {
       "charset", "string",
       new Updater(){
         @Override
-        public void update(String charset, ConfigBuilder builder){
+        public void update(final String charset, final ConfigBuilder builder){
           builder.setCharset(charset);
         }
       },
@@ -87,7 +96,7 @@ public enum ConfigOption {
       "preprocess", "string",
       new Updater(){
         @Override
-        public void update(String preprocessCommand, ConfigBuilder builder){
+        public void update(final String preprocessCommand, final ConfigBuilder builder){
           builder.setPreprocessCommand(preprocessCommand);
         }
       },
@@ -101,16 +110,16 @@ public enum ConfigOption {
   private final String allowedTypes;
 
   private final Updater updater;
-  
+
   private final String defaultValue;
 
 
-  ConfigOption(String name, String allowedTypes, Updater updater) {
+  ConfigOption(final String name, final String allowedTypes, final Updater updater) {
     this(name, allowedTypes, updater, null);
   }
 
   ConfigOption(
-      String name, String allowedTypes, Updater updater, String defaultValue) {
+      final String name, final String allowedTypes, final Updater updater, final String defaultValue) {
 
     this.name = name;
     this.allowedTypes = allowedTypes;
@@ -133,7 +142,7 @@ public enum ConfigOption {
     return defaultValue;
   }
 
-  public void update(JsonElement jsonElement, ConfigBuilder builder) {
+  public void update(final JsonElement jsonElement, final ConfigBuilder builder) {
     updater.update(jsonElement, builder);
   }
 
@@ -146,27 +155,27 @@ public enum ConfigOption {
     private String optionAllowedTypes;
 
 
-    public void update(boolean value, ConfigBuilder builder) {
+    public void update(final boolean value, final ConfigBuilder builder) {
       throwExceptionOnOptionWrongType(Boolean.toString(value));
     }
 
-    public void update(Number value, ConfigBuilder builder) {
+    public void update(final Number value, final ConfigBuilder builder) {
       throwExceptionOnOptionWrongType(value.toString());
     }
 
-    public void update(String value, ConfigBuilder builder) {
+    public void update(final String value, final ConfigBuilder builder) {
       throwExceptionOnOptionWrongType(value);
     }
 
-    public void update(JsonArray value, ConfigBuilder builder) {
+    public void update(final JsonArray value, final ConfigBuilder builder) {
       throwExceptionOnOptionWrongType(value.toString());
     }
 
-    public void update(JsonObject value, ConfigBuilder builder) {
+    public void update(final JsonObject value, final ConfigBuilder builder) {
       throwExceptionOnOptionWrongType(value.toString());
     }
 
-    private void update(JsonElement jsonElement, ConfigBuilder builder) {
+    private void update(final JsonElement jsonElement, final ConfigBuilder builder) {
       if (jsonElement.isJsonPrimitive()) {
         JsonPrimitive primitive = jsonElement.getAsJsonPrimitive();
 
@@ -184,15 +193,15 @@ public enum ConfigOption {
       }
     }
 
-    public void setOptionName(String name) {
+    public void setOptionName(final String name) {
       this.optionName = name;
     }
 
-    public void setOptionAllowedTypes(String types) {
+    public void setOptionAllowedTypes(final String types) {
       this.optionAllowedTypes = types;
     }
 
-    private void throwExceptionOnOptionWrongType(String jsonElementValue) {
+    private void throwExceptionOnOptionWrongType(final String jsonElementValue) {
       throw new IllegalArgumentException(
           String.format(
               "Option '%s' must be %s. Found: %s",

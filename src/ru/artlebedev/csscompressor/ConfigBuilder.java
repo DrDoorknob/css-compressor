@@ -6,29 +6,37 @@
 
 package ru.artlebedev.csscompressor;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
-import org.apache.commons.cli.CommandLine;
-
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.io.FileUtils;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 
 class ConfigBuilder {
 
   private final String REPLACE_SPLITTER = "::";
 
+  private final String[] cssExtensions = new String[] { "css" };
+
 
   private final CommandLine cmdLine;
 
-  private String configFilePath;
+  private final String configFilePath;
+
+  private String inputPath;
 
   private String rootPath;
 
@@ -43,7 +51,7 @@ class ConfigBuilder {
   private String preprocessCommand;
 
 
-  ConfigBuilder(CommandLine cmdLine) {
+  ConfigBuilder(final CommandLine cmdLine) {
     this.cmdLine = cmdLine;
     configFilePath = cmdLine.getArgs()[0];
   }
@@ -99,36 +107,36 @@ class ConfigBuilder {
   }
 
 
-  public void setRootPath(String rootPath) {
+  public void setRootPath(final String rootPath) {
     this.rootPath = rootPath;
   }
 
-  public void setCharset(String charset) {
+  public void setCharset(final String charset) {
     this.charset = charset;
   }
 
-  public void setOutputPath(String outputPath) {
+  public void setOutputPath(final String outputPath) {
     this.outputPath = outputPath;
   }
 
-  public void setModulesInfo(JsonObject modulesInfo) {
+  public void setModulesInfo(final JsonObject modulesInfo) {
     this.modulesInfo = modulesInfo;
   }
 
-  public void setOutputWrapper(String outputWrapper) {
+  public void setOutputWrapper(final String outputWrapper) {
     this.outputWrapper = outputWrapper;
   }
 
-  public void setPreprocessCommand(String command) {
+  public void setPreprocessCommand(final String command) {
     this.preprocessCommand = command;
   }
 
+	public void setInputPath(final String inputPath) {
+		this.inputPath = inputPath;
+	}
 
 
-
-
-
-  private String getRootFullPath() {
+private String getRootFullPath() {
     String configCatalog = new File(configFilePath).getParent();
 
     String rootPath;
@@ -151,10 +159,38 @@ class ConfigBuilder {
 
   private List<Config.Module> getModules() {
     if (modulesInfo == null) {
-      throw new RuntimeException(
-          "Option '" + ConfigOption.MODULES.getName() + "' " +
-              "is required.");
+      if (inputPath == null) {
+    	  throw new RuntimeException(
+    	          "Option '" + ConfigOption.MODULES.getName() + "' " +
+    	              "is required.");
+      }
+      return getModulesDirectory();
     }
+    else {
+    	return getModulesSpecified();
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<Config.Module> getModulesDirectory() {
+	  Path rootPathObj = Paths.get(getRootFullPath(), inputPath).toAbsolutePath().normalize();
+	  File inDir = rootPathObj.toFile();
+	  if (!inDir.isDirectory()) {
+		  throw new RuntimeException("Option inputPath must be a valid directory "
+		  		+ "relative to the \"root\" option.");
+	  }
+	  Collection<File> fileCol = FileUtils.listFiles(inDir, cssExtensions, true);
+	  List<Config.Module> modules = new ArrayList<Config.Module>();
+	  for (File cssFile : fileCol) {
+		  String cssPath = cssFile.getPath();
+		  Path filePath = Paths.get(cssPath).normalize();
+		  String fileOutName = rootPathObj.relativize(filePath).toString();
+		  modules.add(new Config.Module(null, cssPath, getModuleOutputPath(fileOutName, null)));
+	  }
+	  return modules;
+  }
+
+  private List<Config.Module> getModulesSpecified() {
 
 
     List<Config.Module> modules = new ArrayList<Config.Module>();
@@ -163,80 +199,16 @@ class ConfigBuilder {
         modulesInfo.entrySet()) {
 
       String name = moduleData.getKey();
-      JsonElement info = moduleData.getValue();
+      String inPath = calculateFullPath(moduleData.getValue().getAsString());
 
-
-      List<String> inputs;
-      String output;
-
-      if (Utils.isJsonString(info) || info.isJsonArray()) {
-        inputs = extractModuleInputs(info);
-        output = null;
-
-      } else if (info.isJsonObject()) {
-        JsonObject infoAsObject = info.getAsJsonObject();
-
-        JsonElement inputsData = infoAsObject.get("inputs");
-        if (inputsData == null) {
-          throw new IllegalArgumentException(
-              "Module '" + name + "' must specify inputs " +
-                  "using \"inputs\" key. Found: " + inputsData);
-        }
-        inputs = extractModuleInputs(inputsData);
-
-        JsonElement outputRaw = infoAsObject.get("output");
-        if (outputRaw != null && !Utils.isJsonString(outputRaw)) {
-          throw new IllegalArgumentException(
-              "Output of module '" + name + "' must be a string. Found: " +
-                  outputRaw);
-        }
-
-        output = Utils.jsonElementToStringOrNull(outputRaw);
-
-      } else {
-        throw new IllegalArgumentException(
-            "Module info must be either a single string, " +
-                "an array of strings, or an object. Found: " + info);
-      }
-
-      modules.add(
-          new Config.Module(name, inputs, getModuleOutputPath(name, output)));
+      modules.add(new Config.Module(name, inPath, getModuleOutputPath(name, null)));
     }
 
     return modules;
   }
 
 
-  private List<String> extractModuleInputs(JsonElement element) {
-    List<String> inputs = new ArrayList<String>();
-
-    if (Utils.isJsonString(element)) {
-      inputs.add(
-          calculateFullPath(element.getAsString()));
-
-    } else if (element.isJsonArray()) {
-      for (JsonElement input : element.getAsJsonArray()) {
-        String str = Utils.jsonElementToStringOrNull(input);
-
-        if (str == null) {
-          throw new IllegalArgumentException(
-              "Module inputs contained an element " +
-                  "that was not a string literal: " + input);
-        }
-
-        inputs.add(calculateFullPath(str));
-      }
-    } else {
-      throw new IllegalArgumentException(
-          "Module inputs must be either a single string, " +
-              "or an array of strings. Found: " + element);
-    }
-
-    return inputs;
-  }
-
-
-  private String getModuleOutputPath(String moduleName, String moduleOutput) {
+  private String getModuleOutputPath(final String moduleName, String moduleOutput) {
     if (moduleOutput == null && outputPath == null) {
       throw new IllegalArgumentException(
           String.format(
@@ -291,7 +263,7 @@ class ConfigBuilder {
   }
 
 
-  private String calculateFullPath(String path) {
+  private String calculateFullPath(final String path) {
     return new File(getRootFullPath(), path).getPath();
   }
 

@@ -12,19 +12,17 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 
-import com.google.gson.JsonElement;
-
 
 public class Utils {
 
   private Utils() {}
 
 
-  public static String readFile(String path) throws IOException {
+  public static String readFile(final String path) throws IOException {
     return readFile(path, "UTF-8");
   }
 
-  public static String readFile(String path, String charset)
+  public static String readFile(final String path, final String charset)
       throws IOException {
 
     FileInputStream fileStream = new FileInputStream(path);
@@ -46,19 +44,19 @@ public class Utils {
   }
 
 
-  public static void writeToFile(String path, String content)
+  public static void writeToFile(final String path, final String content)
       throws IOException {
 
     writeToFile(path, content, "UTF-8");
   }
 
   public static void writeToFile(
-      String path, String content, String charset) throws IOException {
+      final String path, final String content, final String charset) throws IOException {
 
     FileOutputStream fileStream = new FileOutputStream(path);
     OutputStreamWriter outputStream =
         new OutputStreamWriter(fileStream, charset);
-    
+
     try {
       outputStream.write(content);
     } finally {
@@ -66,14 +64,16 @@ public class Utils {
       fileStream.close();
     }
   }
-  
-  
-  
+
+
+
 
   /**
    * @return  If element is a JsonPrimitive that corresponds to a string, then
    *          return the value of that string; otherwise, return null.
    */
+
+  /*gsondeprecate
   public static String jsonElementToStringOrNull(JsonElement element) {
     if (element == null || element.isJsonNull() || !isJsonString(element)) {
       return null;
@@ -85,6 +85,6 @@ public class Utils {
 
   public static boolean isJsonString (JsonElement element) {
     return element.isJsonPrimitive() && element.getAsJsonPrimitive().isString();
-  }
+  }*/
 
 }

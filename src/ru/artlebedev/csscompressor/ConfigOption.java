@@ -6,10 +6,6 @@
 
 package ru.artlebedev.csscompressor;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
 
 public enum ConfigOption {
 
@@ -24,7 +20,7 @@ public enum ConfigOption {
       "."), // relative to location of config json file
 
   INPUT_PATH(
-		  "input-path", "string",
+		  "inpath", "string",
 		  new Updater() {
 			  @Override
 			public void update(final String value, final ConfigBuilder builder) {
@@ -33,7 +29,7 @@ public enum ConfigOption {
 		  }),
 
   OUTPUT_PATH(
-      "output-path", "string",
+      "outpath", "string",
       new Updater(){
         @Override
         public void update(final String outputPath, final ConfigBuilder builder){
@@ -42,7 +38,7 @@ public enum ConfigOption {
       }),
 
   OUTPUT_WRAPPER(
-      "output-wrapper", "string or array",
+      "outwrapper", "string or array",
       new Updater(){
         @Override
         public void update(final String outputWrapper, final ConfigBuilder builder){
@@ -53,6 +49,8 @@ public enum ConfigOption {
          * output-wrapper can also be an array of strings that should be
          * concatenated together.
          */
+        /* JSON dependency temporarily removed, will be changed over to Commons net.sf.json
+         * gsondeprecate
         @Override
         public void update(
             final JsonArray outputWrapperParts, final ConfigBuilder builder) {
@@ -70,17 +68,19 @@ public enum ConfigOption {
             outputWrapper.append(part);
           }
           update(outputWrapper.toString(), builder);
-        }
+        }*/
       }),
 
-  MODULES(
+  /*
+   * gsondeprecate
+   * MODULES(
       "modules", "object",
       new Updater(){
         @Override
         public void update(final JsonObject modules, final ConfigBuilder builder){
           builder.setModulesInfo(modules);
         }
-      }),
+      }),*/
 
   CHARSET(
       "charset", "string",
@@ -142,8 +142,8 @@ public enum ConfigOption {
     return defaultValue;
   }
 
-  public void update(final JsonElement jsonElement, final ConfigBuilder builder) {
-    updater.update(jsonElement, builder);
+  public void update(final Object cfgValue, final ConfigBuilder builder) {
+    updater.update(cfgValue, builder);
   }
 
 
@@ -167,30 +167,42 @@ public enum ConfigOption {
       throwExceptionOnOptionWrongType(value);
     }
 
-    public void update(final JsonArray value, final ConfigBuilder builder) {
+    /*gsondeprecate
+     * public void update(final JsonArray value, final ConfigBuilder builder) {
       throwExceptionOnOptionWrongType(value.toString());
     }
 
     public void update(final JsonObject value, final ConfigBuilder builder) {
       throwExceptionOnOptionWrongType(value.toString());
-    }
+    }*/
 
-    private void update(final JsonElement jsonElement, final ConfigBuilder builder) {
-      if (jsonElement.isJsonPrimitive()) {
-        JsonPrimitive primitive = jsonElement.getAsJsonPrimitive();
+    private void update(final Object object, final ConfigBuilder builder) {
 
-        if (primitive.isString()) {
-          update(primitive.getAsString(), builder);
-        } else if (primitive.isBoolean()) {
-          update(primitive.getAsBoolean(), builder);
-        } else if (primitive.isNumber()) {
-          update(primitive.getAsNumber(), builder);
-        }
-      } else if (jsonElement.isJsonArray()) {
-        update(jsonElement.getAsJsonArray(), builder);
-      } else if (jsonElement.isJsonObject()) {
-        update(jsonElement.getAsJsonObject(), builder);
-      }
+    	/*gsondeprecate
+    	 * if (object instanceof JsonElement) {
+    		JsonElement jsonElement = (JsonElement)object;
+	      if (jsonElement.isJsonPrimitive()) {
+	        JsonPrimitive primitive = jsonElement.getAsJsonPrimitive();
+
+	        if (primitive.isString()) {
+	          update(primitive.getAsString(), builder);
+	        } else if (primitive.isBoolean()) {
+	          update(primitive.getAsBoolean(), builder);
+	        } else if (primitive.isNumber()) {
+	          update(primitive.getAsNumber(), builder);
+	        }
+	      } else if (jsonElement.isJsonArray()) {
+	        update(jsonElement.getAsJsonArray(), builder);
+	      } else if (jsonElement.isJsonObject()) {
+	        update(jsonElement.getAsJsonObject(), builder);
+	      }
+    	}
+    	else if (object instanceof String) {
+    		update(object.toString(), builder);
+    	}*/
+    	if (object != null) {
+    		update(object.toString(), builder);
+    	}
     }
 
     public void setOptionName(final String name) {

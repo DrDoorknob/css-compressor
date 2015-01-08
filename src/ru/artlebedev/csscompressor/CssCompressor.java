@@ -9,7 +9,6 @@
 
 package ru.artlebedev.csscompressor;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
@@ -22,11 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.apache.commons.exec.CommandLine;
-import org.apache.commons.exec.DefaultExecutor;
-import org.apache.commons.exec.ExecuteWatchdog;
-import org.apache.commons.exec.PumpStreamHandler;
 
 
 public class CssCompressor {
@@ -41,7 +35,8 @@ public class CssCompressor {
 		it tracks a paring of quotes and parenthesis
 		@import\s+(?:url\(\s*(?=[^;$]+?\)))?(["']?)([\w\\\/\-\_\.]+?\.css)\1(?!["'])[^;$]*?(;|$)
 
-		TODO(samilyak): Prevent from matching @import inside CSS comments
+		Completed by DKeyworth: (samilyak): Prevent from matching @import inside CSS comments
+
 	*/
 	private static final Pattern cssImportPattern = Pattern.compile(
 			"@import\\s+" +
@@ -58,8 +53,14 @@ public class CssCompressor {
 			"[^;$]*?(;|$)",
 			Pattern.MULTILINE);
 
-	// Pattern without escaping slashes: /\*([\s\S]*)\*/
-	private static final Pattern cssCommentPattern = Pattern.compile("/\\*([\\s\\S]*)\\*/");
+	// A small pattern used to decide how to fix situations where the relative-resolver has already
+	// changed an instance of an import. If the import used the url-parentheses pattern, we need
+	// to resolve it by root file path. Otherwise, we should do it the original way based on the
+	// currently-resolving file path.
+	private static final Pattern cssImportUrlPattern = Pattern.compile("^\\s*@import\\s+url\\(");
+
+	// Pattern without escaping slashes: /\*([\s\S]*?)\*/
+	private static final Pattern cssCommentPattern = Pattern.compile("/\\*([\\s\\S]*?)\\*/");
 
 	// Pattern without escaping slashes: url\((['"])?((?:[\w\.]+/)*\w+\.([a-zA-Z]{2,4}))(['"])?\)
 	// Matches the url() section of: "background-image: url("../thing.png");"
@@ -168,28 +169,27 @@ public class CssCompressor {
 		/*
 			We need to prevent from processing same files more than once,
 			to minify result build file and more importantly to avoid cyclic imports.
-			That's why we need 2nd argument
+			That's why we need 3rd argument
 			containing paths of already processed files.
 		*/
 
 		File fileAtPath = new File(path);
 		Path fileDir = Paths.get(path).getParent();
 		String fileCanonicalPath = fileAtPath.getCanonicalPath();
-		String fileCatalog = fileAtPath.getParent();
 
 		if (processedFiles.contains(fileCanonicalPath)) {
-			return new CssProcessingResult("", processedFiles);
+			return new CssProcessingResult("");
 		}
 
 		processedFiles.add(fileCanonicalPath);
 
 		String inputContent;
-		if (tryPreprocess && config.getPreprocessCommand() != null) {
+		/*if (tryPreprocess && config.getPreprocessCommand() != null) {
 			inputContent =
 					preprocessAndGetOutput(config.getPreprocessCommand(), path);
-		} else {
+		} else {*/
 			inputContent = Utils.readFile(path, config.getCharset());
-		}
+		//}
 
 		if (!fileDir.equals(rootFilePath)) {
 			Path relPath = rootFilePath.relativize(fileDir).normalize();
@@ -205,9 +205,9 @@ public class CssCompressor {
 			// it's not actually the inside of a comment. Keep in mind, CSS does not support single-line comments.
 
 			int startIdx = matcher.start(0);
-			int commentFindStartIndex = startIdx - MAX_COMMENT_SURROUND_LENGTH;
+			int commentFindStartIndex = Math.max(startIdx - MAX_COMMENT_SURROUND_LENGTH, 0);
 			Matcher commentFind = cssCommentPattern.matcher(inputContent.substring(
-					Math.max(commentFindStartIndex, 0),
+					commentFindStartIndex,
 					Math.min(startIdx + MAX_COMMENT_SURROUND_LENGTH, inputContent.length())));
 			boolean inComment = false;
 			while (commentFind.find()) {
@@ -226,7 +226,16 @@ public class CssCompressor {
 
 			String importFileContent = "";
 			if (!isCssImportAbsolute(importPath)) {
-				File importFile = new File(fileCatalog, importPath);
+				// NOTE: At this point, all url()-based relative paths have been modified by rewriteRelativePaths,
+				// so we should be resolving this path based on the root file path.
+				File importFile;
+				String fg = matcher.group();
+				if (cssImportUrlPattern.matcher(matcher.group()).find()) {
+					importFile = rootFilePath.resolve(importPath).toFile();
+				}
+				else {
+					importFile = fileDir.resolve(importPath).toFile();
+				}
 				CssProcessingResult importProcessingResult =
 						processCssFile(rootFilePath, importFile.getPath(), processedFiles, false);
 
@@ -247,7 +256,7 @@ public class CssCompressor {
 		matcher.appendTail(stringResult);
 
 
-		return new CssProcessingResult(stringResult.toString(), processedFiles);
+		return new CssProcessingResult(stringResult.toString());
 	}
 
 
@@ -282,9 +291,11 @@ public class CssCompressor {
 			Path urlPath = Paths.get(url);
 			// Combine the relative path that moves us from "css/layers/renderingFile.css" to "css/requireFile.css"
 			// WITH the relative path that moves us from "css/requireFile.css" to "images/icon.png"
-			String newRelPath = relPath.resolve(urlPath).normalize().toString();
+			Path newRelPath = relPath.resolve(urlPath).normalize();
+			// Path class automatically uses \, which escapes characters in HTML strings.
+			String newRel = newRelPath.toString().replace('\\', '/');
 
-			String patternReplace = String.format("url(%s)", newRelPath);
+			String patternReplace = String.format("url(%s)", newRel);
 
 			matcher.appendReplacement(sb, "");
 			sb.append(patternReplace);
@@ -293,11 +304,12 @@ public class CssCompressor {
 		return sb.toString();
 	}
 
-
+/*
 	private String preprocessAndGetOutput(final String command, final String path)
 			throws IOException {
 
 		// replace %s with a file path
+
 		String expandedCommand = String.format(command, path);
 
 		CommandLine commandLine = CommandLine.parse(expandedCommand);
@@ -330,7 +342,7 @@ public class CssCompressor {
 		}
 
 		return stdout.toString(config.getCharset());
-	}
+	}*/
 
 
 	private static boolean isCssImportAbsolute(final String path) {
@@ -350,13 +362,13 @@ public class CssCompressor {
 	private final static class CssProcessingResult {
 
 		final String content;
-		final List<String> processedFiles;
+		//final List<String> processedFiles;
 
 		public CssProcessingResult(
-				final String content, final List<String> processedFiles){
+				final String content){
 
 			this.content = content;
-			this.processedFiles = processedFiles;
+			//this.processedFiles = processedFiles;
 		}
 
 	}

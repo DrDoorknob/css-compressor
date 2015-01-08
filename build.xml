@@ -1,60 +1,18 @@
-<?xml version="1.0" encoding="utf-8"?>
-
-
-<project name="css-compressor" basedir="." default="build">
-
-  <property name="src.dir" value="${basedir}/src" />
-  <property name="lib.dir" value="${basedir}/lib" />
-  <property name="build.dir" value="${basedir}/build" />
-  <property name="classes.dir" value="${build.dir}/classes" />
-  <property name="project.name" value="css-compressor" />
-
-
-  <path id="my.classpath">
-    <fileset dir="${lib.dir}" includes="*.jar" />
-    <pathelement location="${src.dir}" />
-  </path>
-
-
-  <target name="clean">
-    <delete dir="${build.dir}" />
-  </target>
-
-
-  <target name="compile">
-    <mkdir dir="${classes.dir}" />
-
-    <javac
-      destdir="${classes.dir}"
-      classpathref="my.classpath"
-      debug="on"
-      deprecation="on"
-    >
-      <compilerarg value="-Werror"/>
-      <src path="${src.dir}" />
-    </javac>
-  </target>
-
-
-  <target name="jar" depends="compile">
-    <mkdir dir="${build.dir}" />
-
-    <jar destfile="${build.dir}/${project.name}.jar">
-      <zipgroupfileset dir="${lib.dir}" includes="*.jar" />
-      <fileset dir="${classes.dir}" />
-
-      <manifest>
-        <attribute
-          name="Main-Class" value="ru.artlebedev.csscompressor.Main"
-        />
-      </manifest>
-    </jar>
-  </target>
-
-
-  <target name="build" depends="jar" />
-
-
-  <target name="all" depends="clean, jar" />
-
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="create_run_jar" name="CSS-Relativity">
+    <!--this file was created by Eclipse Runnable JAR Export Wizard-->
+    <!--ANT 1.7 is required                                        -->
+    <target name="create_run_jar">
+        <jar destfile="C:/workspace/Caretalks/lib/build/css-relativity.jar">
+            <manifest>
+                <attribute name="Main-Class" value="ru.artlebedev.csscompressor.Main"/>
+                <attribute name="Class-Path" value=". commons-cli-1.2.jar commons-io-1.3.2.jar"/>
+            </manifest>
+            <fileset dir="C:/workspace/css-relativity/bin"/>
+        </jar>
+        <!--<copy file="C:/workspace/css-relativity/lib/commons-cli-1.2.jar" todir="C:/dev"/>
+        <copy file="C:/workspace/css-relativity/lib/commons-exec-1.1.jar" todir="C:/dev"/>
+        <copy file="C:/workspace/css-relativity/lib/gson-2.1.jar" todir="C:/dev"/>
+        <copy file="C:/workspace/css-relativity/lib/commons-io-1.3.2.jar" todir="C:/dev"/>-->
+    </target>
 </project>
